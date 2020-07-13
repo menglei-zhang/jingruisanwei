@@ -1,0 +1,3 @@
+<?php
+//000000000000a:24:{i:0;s:10:"user/index";i:1;s:12:"user/useradd";i:2;s:13:"user/useredit";i:3;s:12:"user/userdel";i:4;s:10:"role/index";i:5;s:12:"role/roleadd";i:6;s:13:"role/roleedit";i:7;s:13:"profile/index";i:8;s:16:"profile/headedit";i:9;s:19:"profile/uploadheade";i:10;s:11:"order/index";i:11;s:14:"order/orderadd";i:12;s:14:"order/orderdel";i:13;s:14:"group/groupadd";i:14;s:11:"group/index";i:15;s:15:"user/giveaccess";i:16;s:15:"order/orderedit";i:17;s:20:"customer/customeradd";i:18;s:14:"customer/index";i:19;s:20:"customer/customerdel";i:20;s:21:"customer/customeredit";i:21;s:15:"group/groupedit";i:22;s:14:"group/groupdel";i:23;s:10:"view/index";}
+?>
