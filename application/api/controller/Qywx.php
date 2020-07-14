@@ -37,7 +37,7 @@
                 $token = $res['access_token'];
             }
             $data = [
-                "touser" => $userid, //接收用户的userid
+                "touser" => 'ZhangMengLei', //接收用户的userid
                 "msgtype" => 'miniprogram_notice',//消息类型
                 "miniprogram_notice" => [
                     "appid" => 'wx5d59065230502c01',//APPid

@@ -23,7 +23,7 @@ use think\Session;
 
 use app\index\controller\Message;
 
-use app\admin\controller\Qywx;
+use app\api\controller\Qywx;
 
 class Orders extends Base
 {
@@ -759,7 +759,7 @@ class Orders extends Base
     	if($this->request->isPost()){
         	$data = input('post.');
           	$data['role_id'] = Db::name('user')->where('user_id',$data['user_id'])->value('role_id');
-          	return json(echoArr(200,$data));
+          	return json(echoArr(200,'请求成功',$data));
         }
     }
     // 确定订单
@@ -797,7 +797,7 @@ class Orders extends Base
             // 组长审核
             if ($data['role_id'] == '4') {
                 if ($orderstatic['static'] != 1) {
-                    $error = array('code' => $code['OperationFailed'], 'msg' => '订单重复提交');
+                    $error = array('code' => 201, 'msg' => '订单重复提交');
                     return json($error);
                     exit;
                 }
@@ -903,12 +903,12 @@ class Orders extends Base
                 }
 
                 $notice = new NoticeModel();
-              	return json(echoArr(1,'订单提交成功','/index.php/api/order/index.html'));
+              	return json(echoArr(200,'订单提交成功'));
             }
             // 生产部编辑提交给手工
             if ($data['role_id'] == '6' || $data['role_id'] == '8' || $data['role_id'] == '10') {
                 if ($data['static'] != 2) {
-                    $error = array('code' => '-1', 'msg' => '订单重复提交');
+                    $error = array('code' => 201, 'msg' => '订单重复提交');
                     return json($error);
                 }
                 switch ($data['confirm']) {
@@ -963,12 +963,12 @@ class Orders extends Base
                 }
                 $res = Db::name('order')->where('id', $data['order_id'])->update(['static' => '4']);
                 $user->isUpdate(true)->save($editUser, ['user_id' => $editUser['user_id']]);
-              	return json(echoArr(1,'订单提交成功','/index.php/api/order/index.html'));
+              	return json(echoArr(200,'订单提交成功'));
             }
             // 3D打印 手工 / 复模 手工 / CNC 手工
             if ($data['role_id'] == '7' || $data['role_id'] == '9' || $data['role_id'] == '11') {
                 if ($data['static'] != 4) {
-                    $error = array('code' => '-1', 'msg' => '订单重复提交');
+                    $error = array('code' => 201, 'msg' => '订单重复提交');
                     return json($error);
                     exit;
                 }
@@ -1001,7 +1001,7 @@ class Orders extends Base
                 if($QYWXUserIds){
                     $Qywx->sendQYWXMessage($QYWXUserIds,$res['user_name'] . '%%业务员%%已处理完成此订单，请核实');
                 }
-              	return json(echoArr(1,'订单提交成功','/index.php/api/order/index.html'));
+              	return json(echoArr(200,'订单提交成功'));
             }
             // 业务员：审核失败后再提交
             if ($data['role_id'] == 3) {
@@ -1022,7 +1022,7 @@ class Orders extends Base
                   $this -> teamLeaderNotice($userInfo, $data['id'], '%%组长%%再次提交了订单');
                   // 修改订单进程状态和消息提示状态.
                   $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '1']);
-                  return json(echoArr(1,'订单提交成功','/index.php/api/order/index.html'));
+                  return json(echoArr(200,'订单提交成功'));
             	}else if($data['static'] == 5){
 					$flag = $content->editorder($data);
                     // 业务员：审核通过通知手工
@@ -1070,12 +1070,14 @@ class Orders extends Base
                     }
                   	// 修改订单进程状态和消息提示状态.
                   	$result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '6']);
-                    return json(echoArr(1,'订单提交成功','/index.php/api/order/index.html'));
+                    return json(echoArr(200,'订单提交成功'));
                 }else{
-                  	$error = array('code' => $code['OperationFailed'], 'msg' => '订单重复提交');
+                  	$error = array('code' => 201, 'msg' => '订单重复提交');
                     return json($error);
                 }
             }
+            $error = array('code' => 501, 'msg' => '操作失败');
+            return json($error);
         } else {
             return json(echoArr(500, '非法请求'));
         }
