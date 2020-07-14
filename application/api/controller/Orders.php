@@ -797,10 +797,11 @@ class Orders extends Base
             // 组长审核
             if ($data['role_id'] == '4') {
                 if ($orderstatic['static'] != 1) {
-                    $error = array('code' => 201, 'msg' => '订单重复提交');
+                    $error = array('code' => 201, 'msg' => '订单已提交');
                     return json($error);
                     exit;
                 }
+                $Qywx = new Qywx();
                 // 组长提交，通过审核
                 $user = new UserModel();
           		$data['user_name'] = $user->where('user_id',$data['userId'])->value('user_name');
@@ -858,7 +859,6 @@ class Orders extends Base
                         ];
                         if ($v['no_open_id']) Message::send($v['no_open_id'], $message);
                         // 企业微信通知
-                        $Qywx = new Qywx();
                         $QYWXUserId = Db::name('user')->where('user_id',$v['user_id'])->value('qywx_id');
                         if($QYWXUserId){
                             $Qywx->sendQYWXMessage($QYWXUserId,$data['user_name'] . '%%财务%%已审核此订单，请查看');
@@ -875,7 +875,6 @@ class Orders extends Base
                     'add_time' => time()
                 ]);
                 // 企业微信通知
-                $Qywx = new Qywx();
                 $QYWXUserId = Db::name('user')->where('user_id',$editUser['user_id'])->value('qywx_id');
                 if($QYWXUserId){
                     $Qywx->sendQYWXMessage($QYWXUserId,$data['user_name'] . '%%生产%%已审核此订单，请处理');
@@ -891,7 +890,6 @@ class Orders extends Base
                         'add_time' => time()
                     ];
                     // 企业微信通知
-                    $Qywx = new Qywx();
                     $QYWXUserId = Db::name('user')->where('user_id',$v['user_id'])->value('qywx_id');
                     if($QYWXUserId){
                         $Qywx->sendQYWXMessage($QYWXUserId,$data['user_name'] . '%%总经理%%已审核此订单，请查看');
@@ -903,12 +901,12 @@ class Orders extends Base
                 }
 
                 $notice = new NoticeModel();
-              	return json(echoArr(200,'订单提交成功'));
+              	return json(echoArr(200,'提交成功'));
             }
             // 生产部编辑提交给手工
             if ($data['role_id'] == '6' || $data['role_id'] == '8' || $data['role_id'] == '10') {
                 if ($data['static'] != 2) {
-                    $error = array('code' => 201, 'msg' => '订单重复提交');
+                    $error = array('code' => 201, 'msg' => '订单已提交');
                     return json($error);
                 }
                 switch ($data['confirm']) {
@@ -963,12 +961,12 @@ class Orders extends Base
                 }
                 $res = Db::name('order')->where('id', $data['order_id'])->update(['static' => '4']);
                 $user->isUpdate(true)->save($editUser, ['user_id' => $editUser['user_id']]);
-              	return json(echoArr(200,'订单提交成功'));
+              	return json(echoArr(200,'提交成功'));
             }
             // 3D打印 手工 / 复模 手工 / CNC 手工
             if ($data['role_id'] == '7' || $data['role_id'] == '9' || $data['role_id'] == '11') {
                 if ($data['static'] != 4) {
-                    $error = array('code' => 201, 'msg' => '订单重复提交');
+                    $error = array('code' => 201, 'msg' => '订单已提交');
                     return json($error);
                     exit;
                 }
@@ -1001,7 +999,7 @@ class Orders extends Base
                 if($QYWXUserIds){
                     $Qywx->sendQYWXMessage($QYWXUserIds,$res['user_name'] . '%%业务员%%已处理完成此订单，请核实');
                 }
-              	return json(echoArr(200,'订单提交成功'));
+              	return json(echoArr(200,'提交成功'));
             }
             // 业务员：审核失败后再提交
             if ($data['role_id'] == 3) {
@@ -1022,8 +1020,9 @@ class Orders extends Base
                   $this -> teamLeaderNotice($userInfo, $data['id'], '%%组长%%再次提交了订单');
                   // 修改订单进程状态和消息提示状态.
                   $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '1']);
-                  return json(echoArr(200,'订单提交成功'));
-            	}else if($data['static'] == 5){
+                  return json(echoArr(200,'提交成功'));
+                }
+                if($data['static'] == 5){
 					$flag = $content->editorder($data);
                     // 业务员：审核通过通知手工
                     switch ($data['confirm']) {
@@ -1070,11 +1069,11 @@ class Orders extends Base
                     }
                   	// 修改订单进程状态和消息提示状态.
                   	$result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '6']);
-                    return json(echoArr(200,'订单提交成功'));
-                }else{
-                  	$error = array('code' => 201, 'msg' => '订单重复提交');
-                    return json($error);
+                    return json(echoArr(200,'提交成功'));
                 }
+                $error = array('code' => 201, 'msg' => '订单已提交');
+                return json($error);
+                
             }
             $error = array('code' => 501, 'msg' => '操作失败');
             return json($error);
@@ -1168,141 +1167,136 @@ class Orders extends Base
                 // 当前用户信息
                 $flag = Db::name('user') -> where('user_id', $data['userId']) -> find();
                 // 组长驳回：订单驳回通知业务员
-                if (1 == $data['static']) {
-                    // 消息通知业务员
-                    $message = [
-                        '您的订单审核未通过,请及时调整!',
-                        $data['order_sn'],
-                        $data['username'],
-                        $data['workname'],
-                        '',
-                        ''
-                    ];
-                    $openId = Db::table('snake_user') -> where('user_id', $data['user_id']) -> value('no_open_id');
-                    if ($openId) Message::send($openId, $message);
-                    // 业务通知：业务员
-                    $notice = new NoticeModel();
-                    $notice -> isUpdate(false) -> save([
-                      'notice_id' => $data['order_id'], 
-                      'content' => "{$flag['user_name']}驳回了你的订单", 
-                      'user_id' => $orderInfo['user_id'], 
-                      'send_user_id' => $flag['user_id'], 
-                      'add_time' => time()
-                    ]);
-                    Db::name('order')->where('id', $data['order_id'])->update(['static' => '3']);
-                    // 企业微信通知
-                    $Qywx = new Qywx();
-                    $QYWXUserId = Db::name('user')->where('user_id',$data['user_id'])->value('qywx_id');
-                    if($QYWXUserId){
-                        $Qywx->sendQYWXMessage($QYWXUserId,$flag['user_name'] . '%%业务员%%驳回你的订单');
-                    }
-                    // 修改订单进程状态和消息提示状态.
-                    $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '3']);
-                    return json(array('msg' => '订单驳回成功', 'code' => 1));
-                }else{
-                    return json(array('msg' => '订单已驳回', 'code' => 2));
+                if ($data['static'] != 1) {
+                    $error = array('msg' => '订单已驳回', 'code' => 201);
+                    return json($error);
+                    exit;
                 }
+                // 消息通知业务员
+                $message = [
+                    '您的订单审核未通过,请及时调整!',
+                    $data['order_sn'],
+                    $data['username'],
+                    $data['workname'],
+                    '',
+                    ''
+                ];
+                $openId = Db::table('snake_user') -> where('user_id', $data['user_id']) -> value('no_open_id');
+                if ($openId) Message::send($openId, $message);
+                // 业务通知：业务员
+                $notice = new NoticeModel();
+                $notice -> isUpdate(false) -> save([
+                    'notice_id' => $data['order_id'], 
+                    'content' => "{$flag['user_name']}驳回了你的订单", 
+                    'user_id' => $orderInfo['user_id'], 
+                    'send_user_id' => $flag['user_id'], 
+                    'add_time' => time()
+                ]);
+                Db::name('order')->where('id', $data['order_id'])->update(['static' => '3']);
+                // 企业微信通知
+                $Qywx = new Qywx();
+                $QYWXUserId = Db::name('user')->where('user_id',$data['user_id'])->value('qywx_id');
+                if($QYWXUserId){
+                    $Qywx->sendQYWXMessage($QYWXUserId,$flag['user_name'] . '%%业务员%%驳回你的订单');
+                }
+                // 修改订单进程状态和消息提示状态.
+                $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '3']);
+                return json(array('msg' => '驳回成功', 'code' => 200));
             }
             if ($data['role_id'] == '7' || $data['role_id'] == '9' || $data['role_id'] == '11') {
                 if ($data['static'] != 4) {
-                    $error = array('code' => '-1', 'msg' => '操作有误');
+                    $error = array('msg' => '订单已驳回', 'code' => 201);
                     return json($error);
                     exit;
                 }
                 // 手工：订单驳回通知 3d打印 / CNC / 复模
-                if(4 == $data['static']){
-                    $userInfo = Db::name('user') -> where('order_id', 'like', "%{$data['id']}%")-> where('user_id', 'neq', $data['userId'])-> find();
-                    $message = [
-                        '您的订单审核未通过,请及时调整!',
-                        $data['order_sn'],
-                        $data['username'],
-                        $data['workname'],
-                        '',
-                        ''
-                    ];
-                    if($userInfo['no_open_id']) return Message::send($userInfo['no_open_id'], $message);
-                    // 业务通知
-                  	$res = Db::name('user')->where('user_id',$data['userId'])->find();
-                    $notice = new NoticeModel();
-                    $notice -> isUpdate(false) -> save([
-                        'notice_id' => $data['id'],
-                        'content' => $res['user_name'] . '驳回你的订单，请处理',
-                        'user_id' => $userInfo['user_id'],
-                        'send_user_id' => $res['user_id'],
-                        'add_time' => time()
-                    ]);
-                  	// 企业微信通知
-                  	$Qywx = new Qywx();
-                  	if($userInfo['qywx_id']){
-                  	$QYWXUserId = Db::name('user')->where('user_id',$userInfo['user_id'])->value('qywx_id');
-                		$Qywx->sendQYWXMessage($QYWXUserId,$res['user_name'] . '%%生产%%驳回你的订单，请处理');
-                    }
-                    // 通知业务员
-                  	$QYWXUserId1 = Db::name('user')->where('user_id',$user_ids)->value('qywx_id');
-                    if($QYWXUserId1){
-                        $Qywx->sendQYWXMessage($QYWXUserId1,$res['user_name'] . '%%业务员%%驳回订单，请查看');
-                    }
-                    // 修改订单进程状态和消息提示状态.
-                    $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '2']);
-                    return json(array('msg' => '订单驳回成功', 'code' => 1));
-                }else{
-                    return json(array('msg' => '订单已退回', 'code' => 500));
+                $userInfo = Db::name('user') -> where('order_id', 'like', "%{$data['id']}%")-> where('user_id', 'neq', $data['userId'])-> find();
+                $message = [
+                    '您的订单审核未通过,请及时调整!',
+                    $data['order_sn'],
+                    $data['username'],
+                    $data['workname'],
+                    '',
+                    ''
+                ];
+                if($userInfo['no_open_id']) return Message::send($userInfo['no_open_id'], $message);
+                // 业务通知
+                $res = Db::name('user')->where('user_id',$data['userId'])->find();
+                $notice = new NoticeModel();
+                $notice -> isUpdate(false) -> save([
+                    'notice_id' => $data['id'],
+                    'content' => $res['user_name'] . '驳回你的订单，请处理',
+                    'user_id' => $userInfo['user_id'],
+                    'send_user_id' => $res['user_id'],
+                    'add_time' => time()
+                ]);
+                // 企业微信通知
+                $Qywx = new Qywx();
+                if($userInfo['qywx_id']){
+                $QYWXUserId = Db::name('user')->where('user_id',$userInfo['user_id'])->value('qywx_id');
+                    $Qywx->sendQYWXMessage($QYWXUserId,$res['user_name'] . '%%生产%%驳回你的订单，请处理');
                 }
+                // 通知业务员
+                $QYWXUserId1 = Db::name('user')->where('user_id',$user_ids)->value('qywx_id');
+                if($QYWXUserId1){
+                    $Qywx->sendQYWXMessage($QYWXUserId1,$res['user_name'] . '%%业务员%%驳回订单，请查看');
+                }
+                // 修改订单进程状态和消息提示状态.
+                $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '2']);
+                return json(array('msg' => '驳回成功', 'code' => 200));
             }
             // 业务员： 驳回订单 通知手工
             if($data['role_id'] == 3){
                 if ($data['static'] != 5) {
-                    $error = array('code' => '-1', 'msg' => '操作有误');
+                    $error = array('msg' => '订单已驳回', 'code' => 201);
                     return json($error);
                     exit;
                 }
-                if(5 == $data['static']){
-                    switch ($data['confirm']) {
-                        // 3d 打印
-                        case 60:
-                            $roleId = 7;
-                            break;
-                        // CNC
-                        case 63:
-                            $roleId = 9;
-                            break;
-                        // 复模
-                        case 66:
-                            $roleId = 11;
-                            break;
-                    }
-                    $groupId = Db::name('group')->where('role_id', $roleId)->value('id');
-                    $userInfo = Db::name('user')->where('group_id', $groupId)->where('order_id', 'like', "%{$data['id']}%")->find();
-                    $message = [
-                        '您的订单审核未通过,请及时调整!',
-                        $data['order_sn'],
-                        $data['username'],
-                        $data['workname'],
-                        '',
-                        ''
-                    ];
-                  	$res = Db::name('user')->where('user_id',$data['userId'])->find();
-                    if($userInfo['no_open_id']) Message::send($userInfo['no_open_id'], $message);
-                    // 业务通知
-                    $notice = new NoticeModel();
-                    $notice -> isUpdate(false) -> save([
-                        'notice_id' => $data['id'],
-                        'content' => $res['user_name'] . '驳回你的订单，请处理',
-                        'user_id' => $userInfo['user_id'],
-                        'send_user_id' => $res['user_id'],
-                        'add_time' => time()
-                    ]);
-                    // 企业微信通知
-                    $Qywx = new Qywx();
-                    if($userInfo['qywx_id']){
-                        $Qywx->sendQYWXMessage($userInfo['qywx_id'],$res['user_name'] . '驳回你的订单，请处理');
-                    }
-                    $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '4']);
-                  	return json(array('msg' => '订单驳回成功', 'code' => 1));
-                }else{
-                    return json(array('msg' => '订单已驳回', 'code' => 500));
+                switch ($data['confirm']) {
+                    // 3d 打印
+                    case 60:
+                        $roleId = 7;
+                        break;
+                    // CNC
+                    case 63:
+                        $roleId = 9;
+                        break;
+                    // 复模
+                    case 66:
+                        $roleId = 11;
+                        break;
                 }
+                $groupId = Db::name('group')->where('role_id', $roleId)->value('id');
+                $userInfo = Db::name('user')->where('group_id', $groupId)->where('order_id', 'like', "%{$data['id']}%")->find();
+                $message = [
+                    '您的订单审核未通过,请及时调整!',
+                    $data['order_sn'],
+                    $data['username'],
+                    $data['workname'],
+                    '',
+                    ''
+                ];
+                $res = Db::name('user')->where('user_id',$data['userId'])->find();
+                if($userInfo['no_open_id']) Message::send($userInfo['no_open_id'], $message);
+                // 业务通知
+                $notice = new NoticeModel();
+                $notice -> isUpdate(false) -> save([
+                    'notice_id' => $data['id'],
+                    'content' => $res['user_name'] . '驳回你的订单，请处理',
+                    'user_id' => $userInfo['user_id'],
+                    'send_user_id' => $res['user_id'],
+                    'add_time' => time()
+                ]);
+                // 企业微信通知
+                $Qywx = new Qywx();
+                if($userInfo['qywx_id']){
+                    $Qywx->sendQYWXMessage($userInfo['qywx_id'],$res['user_name'] . '驳回你的订单，请处理');
+                }
+                $result = Db::name('order')->where('id', $data['order_id'])->update(['static' => '4']);
+                return json(array('msg' => '驳回成功', 'code' => 200));
             }
+            $error = array('code' => 501, 'msg' => '操作失败');
+            return json($error);
         } else {
             return json(echoArr(500, '非法请求'));
         }
